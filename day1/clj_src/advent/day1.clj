@@ -47,7 +47,7 @@
             (= -6))))
 
 #_(-> (slurp (io/resource "day1"))
-      (part1))
+      (part1 0))
 
 #_(conj #{} 1)
 
@@ -79,5 +79,5 @@
 
 (t/run-tests)
 
-#_(-> (slurp (io/resource "day1"))
-      (part2))
+#_(time (-> (slurp (io/resource "day1"))
+            (part2)))
