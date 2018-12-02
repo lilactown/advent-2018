@@ -18,7 +18,13 @@
 
 #_(triples? "aaab")
 
-(defn part1 [input]
+(defn part1
+  "Of these box IDs, four of them contain a letter which appears exactly twice,
+  and three of them contain a letter which appears exactly three times.
+  Multiplying these together produces a checksum of 4 * 3 = 12.
+
+  What is the checksum for your list of box IDs?"
+  [input]
   (let [boxes (s/split-lines input)
         tuples (->> (map tuples? boxes)
                     (filter true?)
@@ -61,7 +67,12 @@
 
 #_(diff-with "aabb" ["abab" "aabb" "abcd" "ancb" "efas"])
 
-(defn part2 [input]
+(defn part2
+  "The correct two boxes will have IDs which differ by exactly one character at
+  the same position in both strings.
+
+  What letters are common between the two correct box IDs?"
+  [input]
   (let [boxes (s/split-lines input)]
     (apply without-diffs
            (loop [s (first boxes)
