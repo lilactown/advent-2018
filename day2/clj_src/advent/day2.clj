@@ -59,7 +59,7 @@
       :else (recur (first coll)
                    (rest coll)))))
 
-(diff-with "aabb" ["abab" "aabb" "abcd" "ancb" "efas"])
+#_(diff-with "aabb" ["abab" "aabb" "abcd" "ancb" "efas"])
 
 (defn part2 [input]
   (let [boxes (s/split-lines input)]
