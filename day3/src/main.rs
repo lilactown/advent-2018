@@ -1,5 +1,6 @@
 extern crate regex;
 use regex::Regex;
+use std::cmp::*;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::prelude::*;
@@ -8,48 +9,71 @@ static TEST_CASE: &str = "#1 @ 1,3: 4x4
 #2 @ 3,1: 4x4
 #3 @ 5,5: 2x2";
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 struct Claim {
-    id: String,
+    id: u32,
     left: u32,
     top: u32,
     width: u32,
     height: u32,
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 struct Coord(u32, u32);
 
-fn create_claims(claim_desc: &str) -> Vec<Claim> {
-    let claim_re: Regex = Regex::new(r"#(\d+) @ (\d+),(\d+): (\d+)x(\d+)").unwrap();
-    let captures = claim_re.captures_iter(claim_desc);
-
-    captures
-        .map(|claim| Claim {
-            id: claim.get(1).unwrap().as_str().to_string(),
-            left: claim.get(2).unwrap().as_str().parse::<u32>().unwrap(),
-            top: claim.get(3).unwrap().as_str().parse::<u32>().unwrap(),
-            width: claim.get(4).unwrap().as_str().parse::<u32>().unwrap(),
-            height: claim.get(5).unwrap().as_str().parse::<u32>().unwrap(),
-        })
-        .collect()
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+struct ClaimWithCoords {
+    id: u32,
+    coords: Vec<Coord>,
 }
 
-fn claim_to_coords(claim: Claim) -> Vec<Coord> {
+fn claim_to_coords(claim: Claim) -> ClaimWithCoords {
     let mut coords = Vec::new();
     for left in claim.left..(claim.left + claim.width) {
         for top in claim.top..(claim.top + claim.height) {
             coords.push(Coord(left, top))
         }
+    };
+    ClaimWithCoords {
+        id: claim.id,
+        coords: coords,
     }
-    coords
 }
 
-fn part1(input: &str) -> usize {
+fn create_claims(claim_desc: &str) -> Vec<ClaimWithCoords> {
+    let claim_re: Regex = Regex::new(r"#(\d+) @ (\d+),(\d+): (\d+)x(\d+)").unwrap();
+    let captures = claim_re.captures_iter(claim_desc);
+
+    captures
+        .map(|claim| Claim {
+            id: claim.get(1).unwrap().as_str().parse::<u32>().unwrap(),
+            left: claim.get(2).unwrap().as_str().parse::<u32>().unwrap(),
+            top: claim.get(3).unwrap().as_str().parse::<u32>().unwrap(),
+            width: claim.get(4).unwrap().as_str().parse::<u32>().unwrap(),
+            height: claim.get(5).unwrap().as_str().parse::<u32>().unwrap(),
+        })
+        .map(claim_to_coords)
+        .collect()
+}
+
+
+// The problem is that many of the claims overlap, causing two or more claims to
+// cover part of the same areas. For example, consider the following claims:
+
+// #1 @ 1,3: 4x4
+// #2 @ 3,1: 4x4
+// #3 @ 5,5: 2x2
+
+// If the Elves all proceed with their own plans, none of them will have enough
+// fabric. How many square inches of fabric are within two or more claims?
+
+fn part1(claims: &Vec<ClaimWithCoords>) -> usize {
     let mut seen = HashSet::new();
     let mut collisions = HashSet::new();
-    for claim in create_claims(input) {
-        for coord in claim_to_coords(claim) {
+    // .iter() creates a borrowed iterable so
+    // we don't move claims and claims.coords
+    for claim in claims.iter() {
+        for coord in claim.coords.iter() {
             if seen.contains(&coord) {
                 collisions.insert(coord);
             } else {
@@ -60,15 +84,29 @@ fn part1(input: &str) -> usize {
     collisions.len()
 }
 
+// What is the ID of the only claim that doesn't overlap?
+
+fn part2(claims: &Vec<ClaimWithCoords>) -> u32 {
+   32
+}
+
 fn main() {
     let mut f = File::open("resources/input").expect("File not found");
     let mut input = String::new();
 
     f.read_to_string(&mut input).expect("Error reading file");
 
-    println!("-- Part1 --");
-    println!("Test case: {} = {}", part1(TEST_CASE), 4);
+    let test_case = create_claims(TEST_CASE);
     // &*input is an "explicit borrow" that allows us to convert String -> &str
-    println!("Answer: {}", part1(&*input));
+    let claims = create_claims(&*input);
+
+    println!("-- Part1 --");
+    println!("How many square inches of fabric are within two or more claims?");
+    // Clone them so we don't claim ownership over them
+    println!("Test case: {} = {}", part1(&test_case), 4);
+    println!("Answer: {}", part1(&claims));
     println!("-- Part2 --");
+    println!("What is the ID of the only claim that doesn't overlap?");
+    println!("Test case: {} = {}", part2(&test_case), 3);
+    println!("Answer: {}", part2(&claims));
 }
