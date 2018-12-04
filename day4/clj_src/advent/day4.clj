@@ -32,8 +32,13 @@
 (def guard-wakes
   #"\[1518-(\d+)-(\d+) (\d+):(\d+)\] wakes up")
 
+(format "%02d" (inc (str->int "12")))
+
 (defn ->start [[_ MM dd hh mm id]]
-  {:id id :start {:MM MM :dd dd :hh hh :mm mm}})
+  (if (= hh "23") ;; started on the previous day, just roll them over
+                ;;to the next for easy reporting
+    {:id id :start {:MM MM :dd (format "%02d" (inc (str->int dd))) :hh "00" :mm "00"}}
+    {:id id :start {:MM MM :dd dd :hh hh :mm mm}}))
 
 (defn ->sleep [[_ MM dd hh mm]]
   {:type :sleep :MM MM :dd dd :hh hh :mm mm})
@@ -77,6 +82,8 @@
 
 (defn sleep-per-guard [logs' id {:keys [day] :as log}]
   (let [total-sleep (->> day (map :sleep-duration) (reduce +))]
-    (assoc logs' id (assoc log :total-sleep total-sleep))))
+    (conj logs' (assoc log :id id :total-sleep total-sleep))))
 
-#_(get-in (reduce-kv sleep-per-guard {} lpg) ["10" :total-sleep])
+#_(def spg (reduce-kv sleep-per-guard [] lpg))
+
+#_(def sleepiest (apply max-key :total-sleep spg))
