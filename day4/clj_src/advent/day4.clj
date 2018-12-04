@@ -1,5 +1,6 @@
 (ns advent.day4
-  (:require [clojure.string :as s]))
+  (:require [clojure.string :as s]
+            [clojure.java.io :as io]))
 
 (def test-case
   "[1518-11-01 00:00] Guard #10 begins shift
@@ -36,7 +37,7 @@
 
 (defn ->start [[_ MM dd hh mm id]]
   (if (= hh "23") ;; started on the previous day, just roll them over
-                ;;to the next for easy reporting
+                  ;;to the next for easy reporting
     {:id id :start {:MM MM :dd (format "%02d" (inc (str->int dd))) :hh "00" :mm "00"}}
     {:id id :start {:MM MM :dd dd :hh hh :mm mm}}))
 
@@ -76,14 +77,61 @@
 #_(input->logs test-case)
 
 (defn logs-per-guard [pg log]
-  (update-in pg [(:id log) :day] conj (dissoc log :id)))
+  (update-in pg [(:id log) :days] conj (dissoc log :id)))
 
 #_(def lpg (reduce logs-per-guard {} (input->logs test-case)))
 
-(defn sleep-per-guard [logs' id {:keys [day] :as log}]
-  (let [total-sleep (->> day (map :sleep-duration) (reduce +))]
+(defn sleep-per-guard [logs' id {:keys [days] :as log}]
+  (let [total-sleep (->> days (map :sleep-duration) (reduce +))]
     (conj logs' (assoc log :id id :total-sleep total-sleep))))
 
 #_(def spg (reduce-kv sleep-per-guard [] lpg))
 
 #_(def sleepiest (apply max-key :total-sleep spg))
+
+(defn freqs-range [freqs [start end]]
+  (map-indexed (fn [i freq]
+                 (if (and (>= i start) (< i end))
+                   (inc freq)
+                   freq))
+               (or freqs (repeat 60 0))))
+
+#_(def sleep-freqs
+    (->> (map :log (:days sleepiest))
+         (flatten)
+         (map (comp str->int :mm))
+         (partition 2)
+         (reduce freqs-range nil)
+         (map-indexed #(assoc {} :t %1 :f %2))
+         (apply max-key :f)))
+
+(defn debug>> [msg x]
+  (println x msg)
+  x)
+
+(defn part1 [input]
+  (let [sleepiest (->> (input->logs input)
+                       #_(debug>> "input->logs")
+                       (reduce logs-per-guard {})
+                       #_(debug>> "lpg")
+                       (reduce-kv sleep-per-guard [])
+                       #_(debug>> "spg")
+                       (apply max-key :total-sleep))
+        most-sleepy (->> sleepiest
+                         :days
+                         (map :log)
+                         (flatten)
+                         (map (comp str->int :mm))
+                         #_(debug>> "flatten comp")
+                         (partition 2)
+                         (reduce freqs-range nil)
+                         #_(debug>> "freqs-range")
+                         (map-indexed #(assoc {} :t %1 :f %2))
+                         (apply max-key :f)
+                         :t)]
+    (* (str->int (:id sleepiest))
+       most-sleepy)))
+
+#_(part1 test-case)
+
+#_(part1 (slurp (io/resource "input")))
