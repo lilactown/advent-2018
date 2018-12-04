@@ -1,6 +1,6 @@
 extern crate regex;
 use regex::Regex;
-use std::cmp::*;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::prelude::*;
@@ -33,7 +33,7 @@ fn claim_to_coords(claim: Claim) -> ClaimWithCoords {
         for top in claim.top..(claim.top + claim.height) {
             coords.push(Coord(left, top))
         }
-    };
+    }
     ClaimWithCoords {
         id: claim.id,
         coords: coords,
@@ -56,7 +56,6 @@ fn create_claims(claim_desc: &str) -> Vec<ClaimWithCoords> {
         .collect()
 }
 
-
 // The problem is that many of the claims overlap, causing two or more claims to
 // cover part of the same areas. For example, consider the following claims:
 
@@ -74,7 +73,7 @@ fn part1(claims: &Vec<ClaimWithCoords>) -> usize {
     // we don't move claims and claims.coords
     for claim in claims.iter() {
         for coord in claim.coords.iter() {
-            if seen.contains(&coord) {
+            if seen.contains(coord) {
                 collisions.insert(coord);
             } else {
                 seen.insert(coord);
@@ -86,8 +85,42 @@ fn part1(claims: &Vec<ClaimWithCoords>) -> usize {
 
 // What is the ID of the only claim that doesn't overlap?
 
+type Grid = HashMap<Coord, HashSet<u32>>;
+
+fn populate_grid(claims: &Vec<ClaimWithCoords>) -> Grid {
+    let mut grid: Grid = HashMap::new();
+    for claim in claims.iter() {
+        for coord in claim.coords.iter() {
+            // get the entry of the grid at coord, or else insert new HashSet
+            let ids = grid.entry(*coord).or_insert(HashSet::new());
+            ids.insert(claim.id);
+        }
+    }
+    grid
+}
+
 fn part2(claims: &Vec<ClaimWithCoords>) -> u32 {
-   32
+    println!("Populating grid..");
+    let grid = populate_grid(claims);
+    println!("Finding the non-duplicate..");
+
+    // Gross mutable for loops inc
+    let mut lonely = 0;
+    for claim in claims.iter() {
+        let mut is_lonely = true;
+        for coord in claim.coords.iter() {
+            let ids = grid.get(coord).unwrap();
+            if ids.len() != 1 {
+                is_lonely = false;
+                break;
+            }
+        }
+        if is_lonely {
+            lonely = claim.id;
+            break;
+        }
+    }
+    lonely
 }
 
 fn main() {
