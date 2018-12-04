@@ -135,7 +135,6 @@ fn main() {
 
     println!("-- Part1 --");
     println!("How many square inches of fabric are within two or more claims?");
-    // Clone them so we don't claim ownership over them
     println!("Test case: {} = {}", part1(&test_case), 4);
     println!("Answer: {}", part1(&claims));
     println!("-- Part2 --");
