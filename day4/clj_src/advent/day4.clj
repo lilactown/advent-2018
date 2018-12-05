@@ -109,7 +109,24 @@
   (println x msg)
   x)
 
-(defn part1 [input]
+(defn guard-freqs [guard]
+  (assoc guard
+         :freqs
+         (->> guard
+              :days
+              (map :log)
+              (flatten)
+              (map (comp str->int :mm))
+              (partition 2)
+              (reduce freqs-range nil)
+              (map-indexed #(assoc {} :t %1 :f %2)))))
+
+(defn part1
+  "Find the guard that has the most minutes asleep.
+  What minute does that guard spend asleep the most?
+
+  What is the ID of the guard you chose multiplied by the minute you chose?"
+  [input]
   (let [sleepiest (->> (input->logs input)
                        #_(debug>> "input->logs")
                        (reduce logs-per-guard {})
@@ -118,15 +135,8 @@
                        #_(debug>> "spg")
                        (apply max-key :total-sleep))
         most-sleepy (->> sleepiest
-                         :days
-                         (map :log)
-                         (flatten)
-                         (map (comp str->int :mm))
-                         #_(debug>> "flatten comp")
-                         (partition 2)
-                         (reduce freqs-range nil)
-                         #_(debug>> "freqs-range")
-                         (map-indexed #(assoc {} :t %1 :f %2))
+                         (guard-freqs)
+                         :freqs
                          (apply max-key :f)
                          :t)]
     (* (str->int (:id sleepiest))
@@ -135,3 +145,31 @@
 #_(part1 test-case)
 
 #_(part1 (slurp (io/resource "input")))
+
+(defn part2
+  "Of all guards, which guard is most frequently asleep on the same minute?
+
+  What is the ID of the guard you chose multiplied by the minute you chose?"
+  [input]
+  (let [guard (->> (input->logs input)
+                   (reduce logs-per-guard {})
+                   (reduce-kv sleep-per-guard [])
+                   (map guard-freqs)
+                   #_(map #(select-keys % [ :id :freqs ]))
+                   #_(debug>> "guard-freqs")
+                   (map (fn [g]
+                          ;; There was a guard who DID NOT SLEEP AT ALL D:
+                          ;; was causing a nil pointer
+                          (if (empty? (:freqs g))
+                            (assoc g :max-freq 0 :max-time nil)
+                            (let [m (apply max-key :f (:freqs g))]
+                              (assoc g
+                                     :max-freq (:f m)
+                                     :max-time (:t m))))))
+                   (apply max-key :max-freq))]
+    (* (str->int (:id guard))
+         (:max-time guard))))
+
+#_(part2 test-case)
+
+#_(part2 (slurp (io/resource "input")))
