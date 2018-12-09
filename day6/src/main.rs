@@ -19,11 +19,11 @@ fn mh_distance((p1, p2): (i32, i32), (q1, q2): (i32, i32)) -> i32 {
     (p1 - q1).abs() + (p2 - q2).abs()
 }
 
-type Point = (char, i32, i32);
+type Point = (i32, i32, i32);
 
 #[derive(Debug, Copy, Clone)]
 struct Marked {
-    color: char,
+    color: i32,
     top: i32,
     left: i32,
     weight: i32,
@@ -39,11 +39,7 @@ struct Grid {
 fn mark_color(left: i32, top: i32, point: Point) -> Marked {
     let (color, l, t) = point;
     Marked {
-        color: if t == top && l == left {
-            color
-        } else {
-            color.to_ascii_lowercase()
-        },
+        color: color,
         top: top,
         left: left,
         weight: mh_distance((t, l), (top, left)),
@@ -67,10 +63,13 @@ fn min_weight_color(result: Result<Marked, MWCErr>, mark: Marked) -> Result<Mark
 }
 
 fn create_grid(points: Vec<Point>) -> (Grid, impl Fn() -> usize) {
-    let (_, width, _) = points.iter().max_by_key(|(_, left, _)| left).unwrap();
-    let (_, _, height) = points.iter().max_by_key(|(_, _, top)| top).unwrap();
+    let (_, boundW, _) = points.iter().max_by_key(|(_, left, _)| left).unwrap();
+    let (_, _, boundH) = points.iter().max_by_key(|(_, _, top)| top).unwrap();
 
     let mut table = Table::new();
+
+    let width = std::cmp::max(boundW, boundH);
+    let height = width;
 
     println!("width: {}, height: {}", width, height);
 
@@ -85,7 +84,7 @@ fn create_grid(points: Vec<Point>) -> (Grid, impl Fn() -> usize) {
             let mark = match marks {
                 Ok(m) => m,
                 Err(MWCErr::MultipleWeights(w)) => Marked {
-                    color: '.',
+                    color: -1,
                     top: top,
                     left: left,
                     weight: w,
@@ -111,17 +110,17 @@ fn create_grid(points: Vec<Point>) -> (Grid, impl Fn() -> usize) {
 fn create_points(input: &str) -> Vec<Point> {
     let point_re: Regex = Regex::new(r"(\d+), (\d+)").unwrap();
     let mut points: Vec<Point> = Vec::new();
-    let mut color = 'A';
+    let mut color = 0;
     for p in point_re.captures_iter(input) {
         let left = p[1].parse().unwrap();
         let top = p[2].parse().unwrap();
         points.push((color, left, top));
-        color = std::char::from_u32((color as u32) + 1).unwrap();
+        color = color + 1;
     }
     points
 }
 
-fn is_finite<'r>(grid: Grid) -> impl FnMut(&(&char, &Vec<&Marked>)) -> bool {
+fn is_finite<'r>(grid: Grid) -> impl FnMut(&(&i32, &Vec<&Marked>)) -> bool {
     let width = grid.width;
     let height = grid.height;
     move |(_, region)| {
@@ -131,16 +130,12 @@ fn is_finite<'r>(grid: Grid) -> impl FnMut(&(&char, &Vec<&Marked>)) -> bool {
     }
 }
 
-fn regions<'r>(points: Vec<Point>, grid: &'r Grid) -> HashMap<char, Vec<&'r Marked>> {
+fn regions<'r>(points: Vec<Point>, grid: &'r Grid) -> HashMap<i32, Vec<&'r Marked>> {
     let mut regions = HashMap::new();
 
     for p in points {
         let (color, _, _) = p;
-        let region: Vec<&Marked> = grid
-            .points
-            .iter()
-            .filter(|m| m.color.to_ascii_lowercase() == color.to_ascii_lowercase())
-            .collect();
+        let region: Vec<&Marked> = grid.points.iter().filter(|m| m.color == color).collect();
         regions.insert(color, region);
     }
     regions
@@ -158,29 +153,39 @@ fn main() {
     let tgc = &test_grid.clone();
     let test_regions = regions(test_points, tgc);
 
-    let test_finite_regions: HashSet<(&char, usize)> = test_regions
+    let test_finite_regions: HashSet<(&i32, usize)> = test_regions
         .iter()
         .filter(is_finite(test_grid))
         .map(|(color, region)| (color, region.len()))
         .collect();
 
-    println!("Test case: {:?}", test_finite_regions);
+    println!(
+        "Test case: {:?}",
+        test_finite_regions
+            .iter()
+            .max_by_key(|(_, size)| size)
+            .unwrap()
+    );
 
     let points = create_points(INPUT.trim());
 
-    let (grid, _) = create_grid(points.clone());
+    let (grid, _prn_table) = create_grid(points.clone());
 
-    // prn_table();
+    //prn_table();
 
     // separate them into regions
     let gc = &grid.clone();
     let regions = regions(points, gc);
 
-    let finite_regions: Vec<(&char, usize)> = regions
+    let finite_regions: Vec<(&i32, usize)> = regions
         .iter()
         .filter(is_finite(grid))
         .map(|(color, region)| (color, region.len()))
         .collect();
 
-    println!("Answer: {:?}", finite_regions.max_by_key(|(_, size)| size));
+    //println!("{}", INPUT);
+    println!(
+        "Answer: {:?}",
+        finite_regions.iter().max_by_key(|(_, size)| size).unwrap()
+    );
 }
