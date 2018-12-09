@@ -5,3 +5,5 @@ authors = ["Will Acton <will.acton@regence.com>"]
 edition = "2018"
 
 [dependencies]
+regex = "1"   
+prettytable-rs = "^0.8"
