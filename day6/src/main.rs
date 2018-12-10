@@ -63,15 +63,13 @@ fn min_weight_color(result: Result<Marked, MWCErr>, mark: Marked) -> Result<Mark
 }
 
 fn create_grid(points: Vec<Point>) -> (Grid, impl Fn() -> usize) {
-    let (_, boundW, _) = points.iter().max_by_key(|(_, left, _)| left).unwrap();
-    let (_, _, boundH) = points.iter().max_by_key(|(_, _, top)| top).unwrap();
+    let (_, bound_w, _) = points.iter().max_by_key(|(_, left, _)| left).unwrap();
+    let (_, _, bound_h) = points.iter().max_by_key(|(_, _, top)| top).unwrap();
 
     let mut table = Table::new();
 
-    let width = std::cmp::max(boundW, boundH);
+    let width = std::cmp::max(bound_w, bound_h);
     let height = width;
-
-    println!("width: {}, height: {}", width, height);
 
     let mut g = Vec::new();
     for top in 0..*height + 1 {
@@ -143,6 +141,7 @@ fn regions<'r>(points: Vec<Point>, grid: &'r Grid) -> HashMap<i32, Vec<&'r Marke
 
 fn main() {
     println!("-- part1 --");
+    println!("What is the size of the largest area that isn't infinite?");
     let test_points = create_points(TEST_CASE);
 
     let (test_grid, _) = create_grid(test_points.clone());
@@ -151,11 +150,11 @@ fn main() {
 
     // separate them into regions
     let tgc = &test_grid.clone();
-    let test_regions = regions(test_points, tgc);
+    let test_regions = regions(test_points.clone(), tgc);
 
     let test_finite_regions: HashSet<(&i32, usize)> = test_regions
         .iter()
-        .filter(is_finite(test_grid))
+        .filter(is_finite(test_grid.clone()))
         .map(|(color, region)| (color, region.len()))
         .collect();
 
@@ -175,17 +174,57 @@ fn main() {
 
     // separate them into regions
     let gc = &grid.clone();
-    let regions = regions(points, gc);
+    let regions = regions(points.clone(), gc);
 
     let finite_regions: Vec<(&i32, usize)> = regions
         .iter()
-        .filter(is_finite(grid))
+        .filter(is_finite(grid.clone()))
         .map(|(color, region)| (color, region.len()))
         .collect();
 
     //println!("{}", INPUT);
     println!(
         "Answer: {:?}",
-        finite_regions.iter().max_by_key(|(_, size)| size).unwrap()
+        finite_regions
+            .iter()
+            .max_by_key(|(_, size)| size)
+            .unwrap()
+            .1
     );
+
+    println!("-- part2 --");
+    println!("What is the size of the region containing all locations which have a total distance to all given coordinates of less than 10000?");
+
+    // dumb brute force method
+    let mut test_safe_region = 0;
+    for top in 0..test_grid.height + 1 {
+        for left in 0..test_grid.width + 1 {
+            let total_distance: i32 = test_points
+                .iter()
+                .map(|(_, l, t)| mh_distance((*l, *t), (left, top)))
+                .sum();
+
+            if total_distance < 32 {
+                test_safe_region = test_safe_region + 1;
+            }
+        }
+    }
+
+    println!("Test case: {}", test_safe_region);
+
+    let mut safe_region = 0;
+    for top in 0..grid.height + 1 {
+        for left in 0..grid.width + 1 {
+            let total_distance: i32 = points
+                .iter()
+                .map(|(_, l, t)| mh_distance((*l, *t), (left, top)))
+                .sum();
+
+            if total_distance < 10_000 {
+                safe_region = safe_region + 1;
+            }
+        }
+    }
+
+    println!("Answer: {}", safe_region);
 }
